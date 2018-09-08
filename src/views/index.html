@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="icon" type="image/icon" href="img/favicon.ico">
+    <link rel="stylesheet" type="text/css" href="css/custom.min.css">
+    <title>Static Site</title>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fontawesome-iconpicker/3.1.0/css/fontawesome-iconpicker.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/angular-dragula/1.2.8/dragula.min.css">
+</head>
+
+<body>
+
+    <div class="container py-5 mt-5" ng-app="ListBuilderApp" ng-controller="ListBuilderCtrl">
+
+        <h4 class="pb-3">Select an icon or add a blank list item.</h4>
+        <div class="row">
+            <div class="col-12">
+                <div class="btn-group">
+                    <button type="button" class="icp icp-dd btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                        Please Select Icon
+                        <span class="caret"></span>
+                        <span class="sr-only">Toggle Dropdown</span>
+                    </button>
+                    <div class="dropdown-menu"></div>
+                </div>
+                <div class="btn-group"><span class="px-2">OR</span></div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-secondary" ng-click="addItemToList()">
+                        New Blank Item
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="py-4">
+            <hr>
+        </div>
+
+        <h4 class="pb-3">Enter headline and copy</h4>
+        <div class="row" dragula='"bag-one"' dragula-model="list">
+            <div class="col-4 d-flex align-items-stretch" ng-repeat="item in list">
+                <div class="card mb-3 w-100 draggable">
+
+                    <div class="card-body">
+                        <button class="btn btn-outline-danger btn-sm float-right" style="margin:-10px;" title="Remove This Item" ng-click="removeListItem($index)"><i class="fal fa-trash"></i></button>
+                        <div class="py-3 text-center h1 handle">
+                            <i ng-if="item.i" class="{{ item.i }} handle" alt="{{ item.i }}" title="{{ item.i }}"></i>
+                            <span ng-if="!item.i" class="handle">&nbsp;</span>
+                        </div>
+                        <div><input type="text" class="form-control h4" ng-model="item.h" placeholder="Enter Headline"></div>
+                        <div class="mb-2"><textarea class="form-control" ng-model="item.c" rows="4" placeholder="Enter Copy"></textarea></div>
+
+                        <div class="mb-1">
+                            <p class="p-0 m-0 pb-1">Text Alignment</p>
+                            <label for="chkAlignLeft{{$index}}"><input id="chkAlignLeft{{$index}}" name="chkAlign{{$index}}" ng-model="item.a" value="l" type="radio"> Left</label>
+                            <label for="chkAlignCenter{{$index}}" class="pl-3"><input id="chkAlignCenter{{$index}}" name="chkAlign{{$index}}" ng-model="item.a" value="c" type="radio"> Center</label>
+                            <label for="chkAlignRight{{$index}}" class="pl-3"><input id="chkAlignRight{{$index}}" name="chkAlign{{$index}}" ng-model="item.a" value="r" type="radio"> Right</label>
+                        </div>
+
+                        <div>
+                            <p class="p-0 m-0 pb-1 {{ isHeadlineNum(item) ? '' : 'text-muted' }}">Counter <small class="text-muted">(only works with numbers)</small></p>
+                            <label for="radioCntUp{{$index}}" class="{{ isHeadlineNum(item) ? '' : 'text-muted' }}">
+                                <input id="radioCntUp{{$index}}" name="radioCntDirection{{$index}}" {{ isHeadlineNum(item) ? '' : 'disabled' }} ng-model="item.d" value="u" type="radio"> Up
+                            </label>
+                            <label for="radioCntDown{{$index}}" class="{{ isHeadlineNum(item) ? '' : 'text-muted' }} pl-3">
+                                <input id="radioCntDown{{$index}}" name="radioCntDirection{{$index}}" {{ isHeadlineNum(item) ? '' : 'disabled' }} ng-model="item.d" value="d" type="radio"> Down
+                            </label </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="py-4">
+            <hr>
+        </div>
+
+        <button class="btn btn-primary" ng-click="insertList()">Insert List</button>
+
+        <div class="py-3" ng-if="debug">
+            <hr>
+            <h6>Realtime Data</h6>
+            <pre><code>{{ list | json }}</code></pre>
+            <hr>
+            <h6>Result Data</h6>
+            <pre><code>{{ html | json }}</code></pre>
+
+            <div ng-bind-html="html"></div>
+
+        </div>
+
+    </div>
+
+    <script src="vendors/vendor.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fontawesome-iconpicker/3.1.0/js/fontawesome-iconpicker.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.7.2/angular.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-dragula/1.2.8/angular-dragula.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.7.2/angular-sanitize.min.js"></script>
+
+
+    <script>
+
+        // TODO: build the text alignment into the scss
+        // TOOD: figure out the counter up/down
+
+        var app = angular.module('ListBuilderApp', ['ngSanitize', angularDragula(angular)]);
+        app.controller('ListBuilderCtrl', function ($scope, $http, dragulaService, $interpolate) {
+            // prevent drag except for .handle
+            dragulaService.options($scope, 'bag-one', { moves: function (el, container, handle) { return handle.classList.contains('handle') } });
+
+            // const for delimitation
+            var ITEM_SEPARATOR = '||'
+            var OBJ_SEPARATOR = '__'
+            var KEYVAL_SEPARATOR = '::'
+
+            // list of all the font awesome icons
+            $scope.icons = [];
+
+            // the angular scope list of items
+            $scope.list = [];
+
+            // the html rendered back to the content block
+            $scope.html = '';
+
+            // passed in token data
+            // TODO: get this information from somewhere...
+            $scope.token = 'i::fal fa-phone__h::123__c::copy__a::c__d::d__||';
+
+            // enables debug printing and logging
+            $scope.debug = true;
+
+            // returns the font awesome prefix (fal fa- or fab fa-)
+            function getPrefix(aStyles) {
+                if (aStyles.indexOf('brands') > -1) { return 'fab fa-' }
+                if (aStyles.indexOf('light') > -1 || aStyles.indexOf('regular') > -1 || aStyles.indexOf('solid') > -1) { return 'fal fa-' }
+            }
+
+            // returns the text alignment class by key code
+            function getAlignClass(keyCode) {
+                switch (keyCode) { case 'l': return 'text-left'; case 'c': return 'text-center'; case 'r': return 'text-right'; default: return ''; }
+            }
+
+            // returns the counter direction by key code
+            function getCounterDirection(keyCode) {
+                switch (keyCode) { case 'u': return ' data-counter="up"'; case 'd': return ' data-counter="down"'; default: return ''; }
+            }
+
+            // initializes the icon picker 
+            function fnInitPicker() {
+                $('.icp-dd').iconpicker({
+                    icons: $scope.icons,
+                    placement: 'bottomLeft',
+                    fullClassFormatter: function (val) { return val; }
+                });
+                $('.icp-dd').on('iconpickerSelected', function (event) {
+                    $scope.list.push({ i: event.iconpickerValue });
+                    $scope.$apply();
+                });
+            }
+
+            // handles parsing the passed in token into the object structure for angular
+            function parseToken() {
+                if ($scope.token) {
+                    var aItems = $scope.token.split(ITEM_SEPARATOR).filter(Boolean);
+                    if (aItems.length > 0) {
+                        aItems.forEach(function (sItem) {
+                            var o = sItem.split(OBJ_SEPARATOR).filter(Boolean), oItem = {};
+                            o.forEach(function (sKeyVal) {
+                                var k = sKeyVal.split(KEYVAL_SEPARATOR);
+                                oItem[k[0]] = k[1];
+                            })
+                            $scope.list.push(oItem);
+                        })
+                    }
+                }
+            }
+
+            // get the latest list of icons from font awesome's github repo
+            $http.get('https://raw.githubusercontent.com/FortAwesome/Font-Awesome/master/advanced-options/metadata/icons.json').then(function (res) {
+                var icons = res.data;
+                Object.keys(icons).forEach(function (key) {
+                    var iconName = (getPrefix(icons[key].styles) + key);
+                    $scope.icons.push({ title: iconName, searchTerms: iconName })
+                });
+                fnInitPicker();
+                parseToken();
+            })
+
+            // add and remove methods
+            $scope.addItemToList = function () { $scope.list.push({}); }
+            $scope.removeListItem = function (i) { $scope.list.splice(i, 1); }
+
+            // converts the list into html for the token
+            $scope.insertList = function () {
+                // create a hash map of the key/vals so we don't add a billion 
+                // lines of code as well as security for escaped strings
+                var sHashMap = '';
+                $scope.list.forEach(function (o) {
+                    delete o.$$hashKey;
+                    Object.keys(o).forEach(function (key) { sHashMap += key + KEYVAL_SEPARATOR + o[key] + OBJ_SEPARATOR })
+                    sHashMap += ITEM_SEPARATOR;
+                });
+
+                // start building the html
+                $scope.html = '<ul data-list="' + sHashMap + '">';
+                var liTemplate = '<li class="{{align}}"><span class="list-icon"><i class="{{icon}}"></i></span><span class="list-headline"{{counter}}>{{headline}}</span><span class="list-copy">{{copy}}</span></li>';
+                $scope.list.forEach(function (o) {
+                    $scope.html += liTemplate
+                        .replace(/{{icon}}/g, o.i || '')
+                        .replace(/{{headline}}/g, o.h || '')
+                        .replace(/{{copy}}/g, o.c || '')
+                        .replace(/{{align}}/g, getAlignClass(o.a))
+                        .replace(/{{counter}}/g, getCounterDirection(o.d))
+                });
+                $scope.html += '</ul>';
+
+                // TODO: Send back to the RadEditor?
+            }
+
+            $scope.isHeadlineNum = function (item) {
+                if (!item.h || item.h == '' || isNaN(item.h)) { delete item.d; return false; }
+                return !isNaN(item.h);
+            }
+        });
+    </script>
+</body>
+
+</html>

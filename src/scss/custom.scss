@@ -1,0 +1,31 @@
+@import 'variables.scss';
+@import 'bootstrap/scss/bootstrap';
+
+$fa-font-path: "/fonts";
+@import '@fortawesome/fontawesome-pro/scss/fontawesome';
+@import '@fortawesome/fontawesome-pro/scss/light';
+@import '@fortawesome/fontawesome-pro/scss/brands';
+
+
+.iconpicker-popover.popover {
+    width:400px !important;
+    height:600px;
+    .iconpicker-items {
+        max-height:calc(600px - 78px);
+    }
+    .iconpicker-item {
+        display:flex;
+        justify-content: center;
+        align-items: center;
+        width:40px;
+        height:40px;
+        font-size:30px;
+        text-decoration: none;
+    }
+}
+
+.handle {
+    cursor: move;
+    cursor: grab;
+    cursor: -webkit-grab;
+}
